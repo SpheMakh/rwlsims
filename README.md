@@ -17,5 +17,5 @@ Run `$ pyxis help[function]` for help on any of these functions.
 $ pyxis meerkat_trial1.MS OUTDIR=Test LSM=gauss.txt make_empty_ms simsky im.lwimager.make_image[restore=True,operation=csclean]
 ```
 
-The above function will create an empty MS ,*meerkat_trial1.MS*, simulate the sky model *gauss.txt* into it then make a clean map using  **lwimager** (if its installed in your system). The images will placed in *OUTDIR/plots-foo/*. 
+The command above will create an empty MS, *meerkat_trial1.MS*, simulate the sky model, *gauss.txt*, into it then make a clean map using  **lwimager** (if its installed in your system). The images will placed in *OUTDIR/plots-foo/*. 
 
