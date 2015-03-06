@@ -45,7 +45,7 @@ def make_empty_ms(msname='$MS', observatory='$OBSERVATORY', antennas='$ANTENNAS'
 
 
 def simsky(msname='$MS', lsmname='$LSM', tdlsec='$TDLSEC', tdlconf='$TDLCONF',
-           column='$COLUMN', noise=0, args=[],**kw):
+           column='$COLUMN', noise=0,recenter_lsm=True, args=[],**kw):
     """ Simulates visibilities into an MS """
 
     msname, lsmname, column, tdlsec, tdlconf = \
@@ -66,18 +66,29 @@ def simsky(msname='$MS', lsmname='$LSM', tdlsec='$TDLSEC', tdlconf='$TDLCONF',
             simnoise(noise=noise,addToCol=_column,column=column)
     # use MeqTrees to predict visibilities if skymodel is Tigger Model or an ASCII file
     else:
-        v.LSM = lsmname
+        if recenter_lsm:
+            # save temp lsm in temporary file
+            tlsm = tempfile.NamedTemporaryFile(suffix='.lsm.html')
+            tlsm.flush
+            tlsmname = tlsm.name
+            x.sh('tigger-convert --recenter=$DIRECTION $lsmname $tlsmname -f')
+            v.LSM = lsmname
+        else:
+            v.LSM = lsmname
+
         args = ["${ms.MS_TDL} ${lsm.LSM_TDL}"] + list(args)
 
         options = {}
-        options['ms_sel.output_column'] = _column
+        options['ms_sel.output_column'] = column
 
         if noise:
             options['noise_stddev'] = noise
 
         options.update(kw)
-        mqt.run(TURBO_SIM, job='_tdl_job_1_simulate_MS',
+        mqt.run(SIMCRIPT, job='_tdl_job_1_simulate_MS',
                 config=tdlconf, section=tdlsec, options=options, args=args)
+        
+        tlsm.close()
 
 document_globals(simsky,"MS LSM COLUMN TDLSEC TDLCONF")    
 
