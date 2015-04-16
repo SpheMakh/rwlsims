@@ -22,7 +22,7 @@ FWHM = math.sqrt( math.log(256) )
 import pyfits
 
 # use simms to create empty MSs (https://github.com/SpheMakh/simms)
-from simms import simms
+import simms
 
 import im.lwimager 
 import im.argo
@@ -37,7 +37,7 @@ def make_empty_ms(msname='$MS', observatory='$OBSERVATORY', antennas='$ANTENNAS'
             interpolate_locals('msname observatory antennas synthesis dtime freq0 dfreq nchan')
 
     if not exists(msname) or MS_REDO:
-        simms(tel=observatory, pos=antennas, msname=msname, synthesis=float(synthesis),
+        simms.create_empty_ms(tel=observatory, pos=antennas, msname=msname, synthesis=float(synthesis),
               dtime=float(dtime), freq0=freq0, dfreq=dfreq, nchan=int(nchan), **kw)
     
     v.MS = msname
