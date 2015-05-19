@@ -30,13 +30,14 @@ import im.argo
 
 def make_empty_ms(msname='$MS', observatory='$OBSERVATORY', antennas='$ANTENNAS',
                   synthesis='$SYNTHESIS', dtime='$DTIME', freq0='$FREQ0',
-                  dfreq='$DFREQ',nchan='$NCHAN', **kw):
+                  dfreq='$DFREQ', nchan='$NCHAN', **kw):
     """ creates an empty MS """
-    
+
     msname, observatory, antennas, synthesis, dtime, freq0, dfreq, nchan =\
             interpolate_locals('msname observatory antennas synthesis dtime freq0 dfreq nchan')
 
     if not exists(msname) or MS_REDO:
+        info("Creating empty MS $msname")
         simms.create_empty_ms(tel=observatory, pos=antennas, msname=msname, synthesis=float(synthesis),
               dtime=float(dtime), freq0=freq0, dfreq=dfreq, nchan=int(nchan), **kw)
     
@@ -63,7 +64,7 @@ def simsky(msname='$MS', lsmname='$LSM', tdlsec='$TDLSEC', tdlconf='$TDLCONF',
         im.lwimager.predict_vis(image=lsmname, wprojplanes=128, column=_column, padding=1.5,**kw)
 
         if noise:
-            simnoise(noise=noise,addToCol=_column,column=column)
+            simnoise(noise=noise, addToCol=_column, column=column)
     # use MeqTrees to predict visibilities if skymodel is Tigger Model or an ASCII file
     else:
         if recenter_lsm:
@@ -113,25 +114,41 @@ def conform(msname='$MS',fitsname='$LSM',outfile=None):
     im.argo.make_empty_image(msname=msname,image=tf.name)
     
     hdu = pyfits.open(fitsname)
+    hdr0 = hdu[0].header
     hdr = pyfits.open(tf.name)[0].header # header from the lwimager empty image
     data = hdu[0].data
     shape = list(data.shape)
+    ndim = len(shape)
 
-    if len(shape) == 2:
-        shape + [1,1]
-    elif len(shape) == 3:
-        shape = shape[:2] + [1] + [shape[2]]
-    else:
-        warn('FITS file has more than 3 axes, not touching it!')
-        return
-
-    hdu[0].data = numpy.reshape(data,shape)
-    hdu[0].header = hdr
-
-    outfile = outfile or fitsname.replace('.fits','4d.fits')
-    hdu.writeto(outfile,clobber=True)
+    imslice = [slice(None)]*ndim
+    imslice[:-2] = [0]*(ndim-2)
+    data = data[imslice][numpy.newaxis,numpy.newaxis,...]
+    
+    outfile = outfile or fitsname.replace(".fits","_4d.fits")
+    pyfits.writeto(outfile, data, hdr, clobber=True)
     
     return outfile
+
+
+def fitsInfo(fits):
+    """ Returs FITS image basic info """
+
+    hdr = pyfits.open(fits)[0].header
+    ra = hdr['CRVAL1']
+    dec = hdr['CRVAL2']
+    naxis = hdr['NAXIS']
+
+    if naxis>3: freq_ind = 3 if hdr['CTYPE3'].startswith('FREQ') else 4
+    else:
+        freq_ind = 3
+        if hdr['CRTYPE3'].startswith('FREQ') is False:
+            return (ra,dec), (False, False, False) , naxis
+
+    nchan = hdr['NAXIS%d'%freq_ind]
+    dfreq = hdr['CDELT%d'%freq_ind]
+    freq0 = hdr['CRVAL%d'%freq_ind] + hdr['CRPIX%d'%freq_ind]*dfreq
+
+    return (ra, dec),(freq0, dfreq, nchan), naxis
 
 
 def verify_sky(fname):
