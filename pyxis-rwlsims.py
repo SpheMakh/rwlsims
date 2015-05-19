@@ -123,6 +123,10 @@ def conform(msname='$MS',fitsname='$LSM',outfile=None):
     imslice = [slice(None)]*ndim
     imslice[:-2] = [0]*(ndim-2)
     data = data[imslice][numpy.newaxis,numpy.newaxis,...]
+
+    # Fix FITS WCS
+    for key in "CDELT1 CDELT2 CRPIX1 CRPIX2".split():
+        hdr[key] = hdr0[key]
     
     outfile = outfile or fitsname.replace(".fits","_4d.fits")
     pyfits.writeto(outfile, data, hdr, clobber=True)
