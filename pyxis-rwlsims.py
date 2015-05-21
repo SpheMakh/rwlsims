@@ -1,4 +1,5 @@
-## simulator 
+## Telescope Simulator
+## Sphesihle Makhathini (sphemakh@gmail.com)
 
 # import Pyxis essentials
 import Pyxis 
@@ -100,7 +101,7 @@ def driver():
     im.lwimager.make_image()
 
 
-def conform(msname='$MS',fitsname='$LSM',outfile=None):
+def conform(msname='$MS',fitsname='$LSM',outfile=None,size=None,flux=None):
     """ conforms FITS file to a structure acceptable to LWIMAGER.
         This assunes a 2D FITS file. It will also work with a 3D FITS file, 
         with the 3rd axis being frequency.
@@ -108,13 +109,20 @@ def conform(msname='$MS',fitsname='$LSM',outfile=None):
 
     msname, fitsname = interpolate_locals('msname fitsname')
 
+    flux = flux or SCALEFLUX
+    size = size or SCALESIZE
+
+    hdu = pyfits.open(fitsname)
+    hdr0 = hdu[0].header
+    npix = hdr0["NAXIS1"]
     ## Insure conformance by letting LWIMAGER create the header
     # Lets use a temp file
     tf = tempfile.NamedTemporaryFile(suffix='.fits',dir='.')
-    im.argo.make_empty_image(msname=msname,image=tf.name)
+    im.argo.make_empty_image(msname=msname, image=tf.name, npix=npix,cellsize="%.4garcsec"%size)
     
-    hdu = pyfits.open(fitsname)
-    hdr0 = hdu[0].header
+
+
+
     hdr = pyfits.open(tf.name)[0].header # header from the lwimager empty image
     data = hdu[0].data
     shape = list(data.shape)
@@ -122,11 +130,15 @@ def conform(msname='$MS',fitsname='$LSM',outfile=None):
 
     imslice = [slice(None)]*ndim
     imslice[:-2] = [0]*(ndim-2)
-    data = data[imslice][numpy.newaxis,numpy.newaxis,...]
+    data = (data[imslice]*flux)[numpy.newaxis,numpy.newaxis,...]
 
     # Fix FITS WCS
     for key in "CDELT1 CDELT2 CRPIX1 CRPIX2".split():
-        hdr[key] = hdr0[key]
+	try:
+            hdr[key] = hdr0[key]
+        except KeyError:
+            warn("NO Cordinate system in FITS file, using pyxis-*conf defaults")
+            break
     
     outfile = outfile or fitsname.replace(".fits","_4d.fits")
     pyfits.writeto(outfile, data, hdr, clobber=True)
